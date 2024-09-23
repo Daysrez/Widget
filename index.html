@@ -54,6 +54,7 @@
             right: 0;
             bottom: 0;
             z-index: 1000;
+            background-color: #000;
         }
         #camera-container.fullscreen {
             position: fixed;
@@ -214,6 +215,18 @@
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
         }
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
         @media (orientation: portrait) {
             #start-scan {
                 font-size: 28px;
@@ -284,6 +297,7 @@
         </div>
         <div id="camera-container">
             <video id="camera" autoplay playsinline></video>
+            <button id="fullscreen-btn" class="fullscreen-btn">⤢ Full Screen</button>
             <div class="overlay">
                 <div class="top-controls">
                     <button id="close-btn" class="btn">✕ Close</button>
@@ -319,6 +333,7 @@
         const noBtn = document.getElementById('no-btn');
         const closeBtn = document.getElementById('close-btn');
         const uploadedDocuments = document.getElementById('uploaded-documents');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
 
         let currentStream;
         let capturedPhotos = [];
@@ -386,16 +401,7 @@
                     video.srcObject = stream;
                     video.play();
                     checkAlignment();
-                    
-                    if (isFullscreenSupported()) {
-                        requestFullscreen(document.documentElement).catch(err => {
-                            console.warn('Failed to enter fullscreen mode:', err);
-                            maximizeCameraView();
-                        });
-                    } else {
-                        console.warn('Fullscreen not supported on this device');
-                        maximizeCameraView();
-                    }
+                    maximizeCameraView();
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
@@ -404,7 +410,8 @@
         }
 
         function maximizeCameraView() {
-            cameraContainer.classList.add('fullscreen');
+            cameraContainer.style.width = '100%';
+            cameraContainer.style.height = '100%';
         }
 
         function capturePhoto() {
@@ -450,6 +457,17 @@
             startContainer.style.display = 'block';
             cameraContainer.style.display = 'none';
         }
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (isFullscreenSupported()) {
+                requestFullscreen(document.documentElement).catch(err => {
+                    console.warn('Failed to enter fullscreen mode:', err);
+                });
+            } else {
+                console.warn('Fullscreen not supported on this device');
+                alert('Fullscreen mode is not supported on your device.');
+            }
+        });
 
         document.addEventListener('touchstart', function(e) {
             if (e.touches.length > 1) {
