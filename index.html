@@ -278,71 +278,6 @@
                 padding: 15px;
             }
         }
-        #permission-alert {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.9);
-            color: #ffffff;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 9999;
-            max-width: 80%;
-            width: 300px;
-        }
-        #permission-message {
-            font-size: 18px;
-            margin-bottom: 20px;
-            line-height: 1.4;
-        }
-        #manual-permission-btn {
-            background-color: #007bff;
-            color: #ffffff;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            display: block;
-            width: 100%;
-            margin-top: 20px;
-        }
-        #manual-permission-btn:hover {
-            background-color: #0056b3;
-        }
-        #camera-error {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 9999;
-            max-width: 80%;
-            width: 300px;
-        }
-        #retry-camera {
-            margin-top: 15px;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        #retry-camera:hover {
-            background-color: #0056b3;
-        }
     </style>
 </head>
 <body>
@@ -375,14 +310,6 @@
             <button id="yes-btn" class="preview-btn">✅ Yes, Save</button>
         </div>
     </div>
-    <div id="permission-alert">
-        <p id="permission-message"></p>
-        <button id="manual-permission-btn">Retry Camera Access</button>
-    </div>
-    <div id="camera-error">
-        <p id="error-message"></p>
-        <button id="retry-camera">Retry Camera Access</button>
-    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
     <script>
@@ -397,30 +324,19 @@
         const noBtn = document.getElementById('no-btn');
         const closeBtn = document.getElementById('close-btn');
         const uploadedDocuments = document.getElementById('uploaded-documents');
-        const permissionAlert = document.getElementById('permission-alert');
-        const permissionMessage = document.getElementById('permission-message');
-        const manualPermissionBtn = document.getElementById('manual-permission-btn');
-        const cameraError = document.getElementById('camera-error');
-        const errorMessage = document.getElementById('error-message');
-        const retryCamera = document.getElementById('retry-camera');
 
         let currentStream;
         let capturedPhotos = [];
 
         function requestFullscreen(element) {
-            try {
-                if (element.requestFullscreen) {
-                    element.requestFullscreen();
-                } else if (element.mozRequestFullScreen) {
-                    element.mozRequestFullScreen();
-                } else if (element.webkitRequestFullscreen) {
-                    element.webkitRequestFullscreen();
-                } else if (element.msRequestFullscreen) {
-                    element.msRequestFullscreen();
-                }
-            } catch (err) {
-                console.log('Error attempting to enable full-screen mode:', err);
-                showPermissionAlert("Unable to enter full-screen mode. The app will continue in windowed mode.");
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
             }
         }
 
@@ -431,44 +347,11 @@
                    document.msFullscreenEnabled;
         }
 
-        function showCameraAccessError(error) {
-            let message = 'An error occurred while accessing the camera.';
-            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                message += ' Please make sure you have given the necessary permissions. Check your browser settings and try again.';
-            } else if (error.name === 'NotFoundError') {
-                message += ' No camera found. Please make sure your device has a camera and try again.';
-            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-                message += ' The camera may be in use by another application. Please close other apps that might be using the camera and try again.';
-            } else if (error.name === 'OverconstrainedError') {
-                message += ' The requested camera settings are not supported by your device. Please try again with default settings.';
-            } else {
-                message += ' Please check your camera settings and try again.';
-            }
-
-            errorMessage.textContent = message;
-            cameraError.style.display = 'block';
-        }
-
-        function hideCameraAccessError() {
-            cameraError.style.display = 'none';
-        }
-
-        function showPermissionAlert(message, showManualBtn = false) {
-            permissionMessage.innerHTML = message;
-            manualPermissionBtn.style.display = showManualBtn ? 'block' : 'none';
-            permissionAlert.style.display = 'block';
-        }
-
-        function hidePermissionAlert() {
-            permissionAlert.style.display = 'none';
-        }
-
         startScanBtn.addEventListener('click', () => {
             if (isFullscreenSupported()) {
                 requestFullscreen(document.documentElement);
             } else {
                 console.log('Full-screen mode is not supported on this device');
-                showPermissionAlert("Full-screen mode is not supported. The app will continue in windowed mode.");
             }
             startContainer.style.display = 'none';
             cameraContainer.style.display = 'block';
@@ -486,8 +369,8 @@
                     width: { ideal: 3840 },
                     height: { ideal: 2160 },
                     advanced: [
-                        { focusMode: "continuous" },
-                        { exposureMode: "continuous" }
+                        { focusMode: 'continuous' },
+                        { exposureMode: 'continuous' }
                     ]
                 }
             };
@@ -498,8 +381,6 @@
                     video.srcObject = stream;
                     video.play();
                     checkAlignment();
-                    hideCameraAccessError();
-                    hidePermissionAlert();
                     if (!isFullscreenSupported()) {
                         console.log('Full-screen mode is not supported on this device');
                         maximizeCameraView();
@@ -507,7 +388,6 @@
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
-                    showCameraAccessError(error);
                 });
         }
 
@@ -606,16 +486,6 @@
             }
             cameraContainer.style.display = 'none';
             startContainer.style.display = 'block';
-        });
-
-        manualPermissionBtn.addEventListener('click', () => {
-            hidePermissionAlert();
-            startCapture();
-        });
-
-        retryCamera.addEventListener('click', () => {
-            hideCameraAccessError();
-            startCapture();
         });
 
         function updateUploadedDocuments() {
