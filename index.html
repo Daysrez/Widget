@@ -3,131 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+    <title>Document Scan</title>
     <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            height: 100%;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        #start-container {
+            text-align: center;
+        }
+        #start-scan {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #start-scan:hover {
+            background-color: #0056b3;
+        }
+        #camera-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
         #camera {
             width: 100%;
             height: 100%;
+            object-fit: cover;
         }
-        #target-box {
-            width: 80%;
-            height: 60%;
-            border: 4px dashed #00FF00;
+        .overlay {
             position: absolute;
-            top: 20%;
-            left: 10%;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
         }
-        #canvas {
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .bottom-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 20px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn:hover {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        #capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+        }
+        #capture-btn::after {
+            content: '';
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #1e1e1e;
+        }
+        #preview-container {
             display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #1e1e1e;
+            z-index: 1000;
         }
         #preview {
-            margin-top: 20px;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
-        .preview-img {
-            width: 100px;
-            height: auto;
-            margin: 10px;
-            border: 2px solid #ccc;
+        .preview-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+        }
+        .preview-btn {
+            background-color: rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 18px;
             cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .preview-btn:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+        #uploaded-documents {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #ffffff;
+        }
+        #confirmation-message {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 10;
         }
     </style>
 </head>
 <body>
-    <div id="camera-container">
-        <video id="camera" autoplay></video>
-        <div id="target-box"></div>
-        <button id="capture-btn" style="display: none;">Capture Photo</button>
+    <div class="container">
+        <div id="start-container">
+            <button id="start-scan">📷 Take Photo</button>
+            <div id="uploaded-documents">📄 0 document(s) scanned</div>
+        </div>
+        <div id="camera-container">
+            <video id="camera" autoplay></video>
+            <div class="overlay">
+                <div class="top-controls">
+                    <button id="close-btn" class="btn">✕ Close</button>
+                </div>
+                <div class="bottom-controls">
+                    <button id="capture-btn"></button>
+                </div>
+            </div>
+        </div>
     </div>
-    <canvas id="canvas"></canvas>
-
-    <div id="preview">
-        <h3>Preview Uploaded Photos</h3>
-        <div id="preview-container"></div>
-        <button id="submit-btn" style="display: none;">Submit Photos</button>
+    <div id="preview-container">
+        <img id="preview" src="" alt="Document Preview">
+        <div id="confirmation-message">Is the document readable and are all 4 corners visible?</div>
+        <div class="preview-controls">
+            <button id="no-btn" class="preview-btn">🔄 No, Retake</button>
+            <button id="yes-btn" class="preview-btn">✅ Yes, Save</button>
+        </div>
     </div>
 
-    <script type="text/javascript">
-        let video = document.getElementById('camera');
-        let canvas = document.getElementById('canvas');
-        let context = canvas.getContext('2d');
-        let previewContainer = document.getElementById('preview-container');
-        let captureBtn = document.getElementById('capture-btn');
-        let submitBtn = document.getElementById('submit-btn');
-        let images = [];
+    <script>
+        const startContainer = document.getElementById('start-container');
+        const startScanBtn = document.getElementById('start-scan');
+        const video = document.getElementById('camera');
+        const cameraContainer = document.getElementById('camera-container');
+        const previewContainer = document.getElementById('preview-container');
+        const preview = document.getElementById('preview');
+        const captureBtn = document.getElementById('capture-btn');
+        const yesBtn = document.getElementById('yes-btn');
+        const noBtn = document.getElementById('no-btn');
+        const closeBtn = document.getElementById('close-btn');
+        const uploadedDocuments = document.getElementById('uploaded-documents');
 
-        // Start the camera when the widget is ready
-        JFCustomWidget.subscribe("ready", function() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
-                    video.srcObject = stream;
-                    video.play();
-                }).catch(function(err) {
-                    console.error("Camera access denied or not supported", err);
-                    alert("Unable to access the camera. Please check your browser permissions.");
-                });
-            }
+        let currentStream;
+        let capturedPhotos = [];
+
+        startScanBtn.addEventListener('click', () => {
+            startContainer.style.display = 'none';
+            cameraContainer.style.display = 'block';
+            startCapture();
         });
 
-        function isDocumentInBox() {
-            // Placeholder logic to check if document is aligned
-            return true;
-        }
-
-        function autoCapture() {
-            if (isDocumentInBox()) {
-                captureBtn.style.display = "block";
-                captureBtn.removeEventListener('click', capturePhoto);  // Remove any existing listeners
-                captureBtn.addEventListener('click', capturePhoto);     // Add new listener
-            } else {
-                requestAnimationFrame(autoCapture); // Keep checking
+        function startCapture() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
             }
+
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    currentStream = stream;
+                    video.srcObject = stream;
+                });
         }
 
         function capturePhoto() {
-            if (images.length >= 5) {  // Limit to 5 photos
-                alert("You can only upload up to 5 photos.");
-                return;
-            }
-
+            const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            let imageData = canvas.toDataURL('image/png');
-            images.push(imageData);
-            updatePreview();
+            const imageData = canvas.toDataURL('image/png');
+
+            preview.src = imageData;
+            previewContainer.style.display = 'block';
+            cameraContainer.style.display = 'none';
         }
 
-        function updatePreview() {
-            previewContainer.innerHTML = '';  // Clear existing previews
-            images.forEach((img, idx) => {
-                let imgElement = document.createElement('img');
-                imgElement.src = img;
-                imgElement.className = 'preview-img';
-                imgElement.onclick = () => removeImage(idx);  // Click to remove image
-                previewContainer.appendChild(imgElement);
-            });
+        captureBtn.addEventListener('click', capturePhoto);
 
-            submitBtn.style.display = images.length > 0 ? "block" : "none";  // Show submit button if there are images
+        yesBtn.addEventListener('click', () => {
+            capturedPhotos.push(preview.src);
+            previewContainer.style.display = 'none';
+            updateUploadedDocuments();
+            goToStartPage();
+        });
+
+        noBtn.addEventListener('click', () => {
+            previewContainer.style.display = 'none';
+            cameraContainer.style.display = 'block';
+        });
+
+        closeBtn.addEventListener('click', () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            cameraContainer.style.display = 'none';
+            startContainer.style.display = 'block';
+        });
+
+        function updateUploadedDocuments() {
+            uploadedDocuments.textContent = `📄 ${capturedPhotos.length} document(s) scanned`;
         }
 
-        function removeImage(index) {
-            images.splice(index, 1);  // Remove the selected image
-            updatePreview();  // Update the preview area
+        function goToStartPage() {
+            startContainer.style.display = 'block';
+            cameraContainer.style.display = 'none';
         }
-
-        function submitPhotos() {
-            // Send the images to JotForm as JSON
-            JFCustomWidget.sendSubmit({
-                valid: true,
-                value: JSON.stringify(images)  // Send images as JSON
-            });
-        }
-
-        // Start the auto-capture process
-        autoCapture();
-
-        // Submit button listener
-        submitBtn.addEventListener('click', submitPhotos);
     </script>
 </body>
 </html>
