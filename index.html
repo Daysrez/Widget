@@ -278,6 +278,20 @@
                 padding: 15px;
             }
         }
+        #error-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 0, 0, 0.8);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 9999;
+            max-width: 80%;
+        }
     </style>
 </head>
 <body>
@@ -310,6 +324,7 @@
             <button id="yes-btn" class="preview-btn">✅ Yes, Save</button>
         </div>
     </div>
+    <div id="error-message"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
     <script>
@@ -324,6 +339,7 @@
         const noBtn = document.getElementById('no-btn');
         const closeBtn = document.getElementById('close-btn');
         const uploadedDocuments = document.getElementById('uploaded-documents');
+        const errorMessageElement = document.getElementById('error-message');
 
         let currentStream;
         let capturedPhotos = [];
@@ -358,7 +374,21 @@
             startCapture();
         });
 
+        function showErrorMessage(message) {
+            errorMessageElement.textContent = message;
+            errorMessageElement.style.display = 'block';
+            setTimeout(() => {
+                errorMessageElement.style.display = 'none';
+            }, 5000);
+        }
+
         function startCapture() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('getUserMedia is not supported');
+                showErrorMessage('Camera access is not supported on this device or browser.');
+                return;
+            }
+
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
             }
@@ -388,6 +418,36 @@
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
+                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                        showErrorMessage('Camera access denied. Please grant permission and try again.');
+                    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                        showErrorMessage('No camera found. Please ensure your device has a camera and try again.');
+                    } else if (error.name === 'OverconstrainedError') {
+                        const fallbackConstraints = {
+                            video: {
+                                facingMode: 'environment',
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
+                            }
+                        };
+                        navigator.mediaDevices.getUserMedia(fallbackConstraints)
+                            .then(stream => {
+                                currentStream = stream;
+                                video.srcObject = stream;
+                                video.play();
+                                checkAlignment();
+                                if (!isFullscreenSupported()) {
+                                    console.log('Full-screen mode is not supported on this device');
+                                    maximizeCameraView();
+                                }
+                            })
+                            .catch(fallbackError => {
+                                console.error('Error accessing camera with fallback settings:', fallbackError);
+                                showErrorMessage('Unable to access the camera. Please check your device settings and try again.');
+                            });
+                    } else {
+                        showErrorMessage('An error occurred while accessing the camera. Please try again.');
+                    }
                 });
         }
 
