@@ -311,6 +311,18 @@
         let currentStream;
         let capturedPhotos = [];
 
+        function requestFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        }
+
         startScanBtn.addEventListener('click', () => {
             startContainer.style.display = 'none';
             cameraContainer.style.display = 'block';
@@ -318,8 +330,7 @@
         });
 
         function checkAlignment() {
-            // This is a simplified version. In a real implementation, you'd analyze the image data.
-            const isAligned = Math.random() > 0.5; // Randomly determine alignment for demo purposes
+            const isAligned = Math.random() > 0.5;
 
             const cornerGuides = document.querySelectorAll('.corner-guide');
             cornerGuides.forEach(guide => {
@@ -355,7 +366,8 @@
                     currentStream = stream;
                     video.srcObject = stream;
                     video.play();
-                    checkAlignment(); // Start checking alignment
+                    checkAlignment();
+                    requestFullscreen(document.documentElement);
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
@@ -407,17 +419,30 @@
             cameraContainer.style.display = 'none';
         }
 
-        // Add event listeners for mobile-specific events
         document.addEventListener('touchstart', function(e) {
             if (e.touches.length > 1) {
-                e.preventDefault(); // Prevent pinch zoom
+                e.preventDefault();
             }
         }, { passive: false });
 
         window.addEventListener('orientationchange', function() {
-            // Handle orientation change if needed
             console.log('Orientation changed');
         });
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function handleFullscreenChange() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                cameraContainer.style.display = 'none';
+                startContainer.style.display = 'block';
+            }
+        }
     </script>
 </body>
 </html>
