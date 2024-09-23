@@ -278,19 +278,44 @@
                 padding: 15px;
             }
         }
-        #error-message {
+        .error-message {
             display: none;
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 0;
+            left: 0;
+            right: 0;
             background-color: rgba(255, 0, 0, 0.8);
-            color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
+            color: white;
+            padding: 10px;
             text-align: center;
             z-index: 9999;
-            max-width: 80%;
+        }
+        
+        #retry-camera {
+            background-color: #ffffff;
+            color: #ff0000;
+            border: none;
+            padding: 5px 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        #file-upload-container {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        #file-upload {
+            display: none;
+        }
+        
+        .file-upload-label {
+            background-color: #007bff;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -324,7 +349,15 @@
             <button id="yes-btn" class="preview-btn">✅ Yes, Save</button>
         </div>
     </div>
-    <div id="error-message"></div>
+    <div id="error-message" class="error-message">
+        <p id="error-text"></p>
+        <button id="retry-camera">Retry Camera Access</button>
+    </div>
+    
+    <div id="file-upload-container">
+        <label for="file-upload" class="file-upload-label">Upload Document Image</label>
+        <input type="file" id="file-upload" accept="image/*">
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
     <script>
@@ -340,6 +373,10 @@
         const closeBtn = document.getElementById('close-btn');
         const uploadedDocuments = document.getElementById('uploaded-documents');
         const errorMessageElement = document.getElementById('error-message');
+        const errorTextElement = document.getElementById('error-text');
+        const retryCameraButton = document.getElementById('retry-camera');
+        const fileUploadContainer = document.getElementById('file-upload-container');
+        const fileUploadInput = document.getElementById('file-upload');
 
         let currentStream;
         let capturedPhotos = [];
@@ -369,15 +406,24 @@
             startCapture();
         });
 
-        function showErrorMessage(message) {
-            errorMessageElement.textContent = message;
+        function showErrorMessage(message, showRetry = true) {
+            errorTextElement.textContent = message;
             errorMessageElement.style.display = 'block';
-            setTimeout(() => {
-                errorMessageElement.style.display = 'none';
-            }, 5000);
+            retryCameraButton.style.display = showRetry ? 'inline-block' : 'none';
+            
+            if (!showRetry) {
+                fileUploadContainer.style.display = 'block';
+            }
+        }
+
+        function hideErrorMessage() {
+            errorMessageElement.style.display = 'none';
+            fileUploadContainer.style.display = 'none';
         }
 
         async function startCapture() {
+            hideErrorMessage();
+            
             if (isFullscreenSupported()) {
                 try {
                     await document.documentElement.requestFullscreen();
@@ -391,8 +437,7 @@
             }
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                console.error('getUserMedia is not supported');
-                showErrorMessage('Camera access is not supported on this device or browser.');
+                showErrorMessage('Camera access is not supported on this device or browser.', false);
                 return;
             }
 
@@ -417,22 +462,31 @@
                 currentStream = stream;
                 video.srcObject = stream;
                 await video.play();
+                cameraContainer.style.display = 'block';
+                startContainer.style.display = 'none';
                 checkAlignment();
             } catch (error) {
-                console.error('Error accessing camera:', error);
                 handleCameraError(error);
             }
         }
 
         function handleCameraError(error) {
+            console.error('Camera error:', error);
+            
             if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                showErrorMessage('Camera access denied. Please grant permission and try again.');
+                showErrorMessage('Camera access denied. Please grant permission and try again. Here\'s how:\n\n' +
+                    '- Chrome: Click the camera icon in the address bar and select "Always allow"\n' +
+                    '- Firefox: Click the camera icon in the address bar and select "Remember this decision"\n' +
+                    '- Safari: Go to Safari > Preferences > Websites > Camera and allow for this website');
             } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                showErrorMessage('No camera found. Please ensure your device has a camera and try again.');
+                showErrorMessage('No camera found. Please ensure your device has a camera and try again.', false);
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                showErrorMessage('Could not start video source. Please ensure no other application is using the camera.', false);
             } else if (error.name === 'OverconstrainedError') {
+                showErrorMessage('The camera does not support the required resolution. Trying with lower settings...', false);
                 useFallbackCamera();
             } else {
-                showErrorMessage('An error occurred while accessing the camera. Please try again.');
+                showErrorMessage('An error occurred while accessing the camera. Please try again or use file upload.', false);
             }
         }
 
@@ -453,7 +507,7 @@
                 checkAlignment();
             } catch (fallbackError) {
                 console.error('Error accessing camera with fallback settings:', fallbackError);
-                showErrorMessage('Unable to access the camera. Please check your device settings and try again.');
+                showErrorMessage('Unable to access the camera. Please check your device settings and try again.', false);
             }
         }
 
@@ -572,6 +626,25 @@
             startContainer.style.display = 'block';
             cameraContainer.style.display = 'none';
         }
+
+        retryCameraButton.addEventListener('click', () => {
+            hideErrorMessage();
+            startCapture();
+        });
+
+        fileUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                    startContainer.style.display = 'none';
+                    cameraContainer.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         document.addEventListener('touchstart', function(e) {
             if (e.touches.length > 1) {
