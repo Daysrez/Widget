@@ -364,11 +364,6 @@
         }
 
         startScanBtn.addEventListener('click', () => {
-            if (isFullscreenSupported()) {
-                requestFullscreen(document.documentElement);
-            } else {
-                console.log('Full-screen mode is not supported on this device');
-            }
             startContainer.style.display = 'none';
             cameraContainer.style.display = 'block';
             startCapture();
@@ -382,7 +377,19 @@
             }, 5000);
         }
 
-        function startCapture() {
+        async function startCapture() {
+            if (isFullscreenSupported()) {
+                try {
+                    await document.documentElement.requestFullscreen();
+                } catch (err) {
+                    console.error('Error attempting to enable full-screen mode:', err);
+                    maximizeCameraView();
+                }
+            } else {
+                console.log('Full-screen mode is not supported on this device');
+                maximizeCameraView();
+            }
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 console.error('getUserMedia is not supported');
                 showErrorMessage('Camera access is not supported on this device or browser.');
@@ -405,50 +412,49 @@
                 }
             };
 
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(stream => {
-                    currentStream = stream;
-                    video.srcObject = stream;
-                    video.play();
-                    checkAlignment();
-                    if (!isFullscreenSupported()) {
-                        console.log('Full-screen mode is not supported on this device');
-                        maximizeCameraView();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error accessing camera:', error);
-                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                        showErrorMessage('Camera access denied. Please grant permission and try again.');
-                    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                        showErrorMessage('No camera found. Please ensure your device has a camera and try again.');
-                    } else if (error.name === 'OverconstrainedError') {
-                        const fallbackConstraints = {
-                            video: {
-                                facingMode: 'environment',
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 }
-                            }
-                        };
-                        navigator.mediaDevices.getUserMedia(fallbackConstraints)
-                            .then(stream => {
-                                currentStream = stream;
-                                video.srcObject = stream;
-                                video.play();
-                                checkAlignment();
-                                if (!isFullscreenSupported()) {
-                                    console.log('Full-screen mode is not supported on this device');
-                                    maximizeCameraView();
-                                }
-                            })
-                            .catch(fallbackError => {
-                                console.error('Error accessing camera with fallback settings:', fallbackError);
-                                showErrorMessage('Unable to access the camera. Please check your device settings and try again.');
-                            });
-                    } else {
-                        showErrorMessage('An error occurred while accessing the camera. Please try again.');
-                    }
-                });
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
+                video.srcObject = stream;
+                await video.play();
+                checkAlignment();
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                handleCameraError(error);
+            }
+        }
+
+        function handleCameraError(error) {
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                showErrorMessage('Camera access denied. Please grant permission and try again.');
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                showErrorMessage('No camera found. Please ensure your device has a camera and try again.');
+            } else if (error.name === 'OverconstrainedError') {
+                useFallbackCamera();
+            } else {
+                showErrorMessage('An error occurred while accessing the camera. Please try again.');
+            }
+        }
+
+        async function useFallbackCamera() {
+            const fallbackConstraints = {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                currentStream = stream;
+                video.srcObject = stream;
+                await video.play();
+                checkAlignment();
+            } catch (fallbackError) {
+                console.error('Error accessing camera with fallback settings:', fallbackError);
+                showErrorMessage('Unable to access the camera. Please check your device settings and try again.');
+            }
         }
 
         function maximizeCameraView() {
