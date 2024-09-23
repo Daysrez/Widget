@@ -25,8 +25,8 @@
         }
         #start-container {
             text-align: center;
-            width: 100%;
             max-width: 300px;
+            width: 100%;
         }
         #start-scan {
             background-color: #007bff;
@@ -53,13 +53,10 @@
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: 1000;
             background-color: #000;
+            z-index: 1000;
         }
         #camera-container.fullscreen {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100vw;
             height: 100vh;
             z-index: 9999;
@@ -85,7 +82,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
         }
         .bottom-controls {
             justify-content: center;
@@ -115,8 +111,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 0;
-            transition: background-color 0.3s, transform 0.1s;
         }
         #capture-btn::after {
             content: '';
@@ -161,10 +155,10 @@
             border-radius: 50px;
             font-size: 20px;
             cursor: pointer;
-            transition: all 0.3s ease;
             width: 80%;
             max-width: 300px;
             margin-bottom: 15px;
+            transition: all 0.3s ease;
         }
         .preview-btn:hover {
             background-color: rgba(255, 255, 255, 0.5);
@@ -175,7 +169,6 @@
         #uploaded-documents {
             margin-top: 20px;
             font-size: 20px;
-            color: #ffffff;
         }
         #confirmation-message {
             position: absolute;
@@ -187,7 +180,6 @@
             padding: 20px;
             border-radius: 15px;
             font-size: 22px;
-            font-weight: bold;
             text-align: center;
             z-index: 10;
         }
@@ -197,7 +189,6 @@
             height: 70px;
             border: 5px solid #00ff00;
             background-color: rgba(0, 255, 0, 0.2);
-            transition: all 0.3s ease;
             animation: pulse 2s infinite;
         }
         .top-left { top: 30px; left: 30px; border-right: none; border-bottom: none; }
@@ -215,69 +206,6 @@
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
         }
-        .fullscreen-btn {
-            display: none;
-        }
-        @media (orientation: portrait) {
-            #start-scan {
-                font-size: 28px;
-                padding: 25px 50px;
-            }
-            .btn {
-                font-size: 24px;
-                padding: 20px 30px;
-            }
-            #capture-btn {
-                width: 100px;
-                height: 100px;
-            }
-            #capture-btn::after {
-                width: 90px;
-                height: 90px;
-            }
-            .preview-btn {
-                font-size: 24px;
-                padding: 20px 40px;
-            }
-            #confirmation-message {
-                font-size: 26px;
-                padding: 25px;
-            }
-            .corner-guide {
-                width: 80px;
-                height: 80px;
-            }
-            .corner-guide.aligned {
-                width: 100px;
-                height: 100px;
-            }
-        }
-        @media (max-height: 600px) and (orientation: landscape) {
-            .btn {
-                font-size: 18px;
-                padding: 12px 20px;
-            }
-            #capture-btn {
-                width: 70px;
-                height: 70px;
-            }
-            #capture-btn::after {
-                width: 60px;
-                height: 60px;
-            }
-            .corner-guide {
-                width: 50px;
-                height: 50px;
-            }
-            .corner-guide.aligned {
-                width: 70px;
-                height: 70px;
-            }
-            #confirmation-message {
-                font-size: 20px;
-                padding: 15px;
-            }
-        }
         #error-message {
             display: none;
             position: fixed;
@@ -290,7 +218,6 @@
             border-radius: 10px;
             text-align: center;
             z-index: 9999;
-            max-width: 80%;
         }
     </style>
 </head>
@@ -326,7 +253,6 @@
     </div>
     <div id="error-message"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
     <script>
         const startContainer = document.getElementById('start-container');
         const startScanBtn = document.getElementById('start-scan');
@@ -344,35 +270,30 @@
         let currentStream;
         let capturedPhotos = [];
 
-        function requestFullscreen(element) {
-            if (element.requestFullscreen) {
-                element.requestFullscreen();
-            } else if (element.mozRequestFullScreen) {
-                element.mozRequestFullScreen();
-            } else if (element.webkitRequestFullscreen) {
-                element.webkitRequestFullscreen();
-            } else if (element.msRequestFullscreen) {
-                element.msRequestFullscreen();
+        function startCapture() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showErrorMessage('Camera access is not supported on this device or browser.');
+                return;
             }
-        }
 
-        function isFullscreenSupported() {
-            return document.fullscreenEnabled || 
-                   document.webkitFullscreenEnabled || 
-                   document.mozFullScreenEnabled ||
-                   document.msFullscreenEnabled;
-        }
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                }
+            };
 
-        startScanBtn.addEventListener('click', () => {
-            if (isFullscreenSupported()) {
-                requestFullscreen(document.documentElement);
-            } else {
-                console.log('Full-screen mode is not supported on this device');
-            }
-            startContainer.style.display = 'none';
-            cameraContainer.style.display = 'block';
-            startCapture();
-        });
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    currentStream = stream;
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(error => {
+                    showErrorMessage('An error occurred while accessing the camera. Please try again.');
+                });
+        }
 
         function showErrorMessage(message) {
             errorMessageElement.textContent = message;
@@ -382,127 +303,6 @@
             }, 5000);
         }
 
-        function startCapture() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                console.error('getUserMedia is not supported');
-                showErrorMessage('Camera access is not supported on this device or browser.');
-                return;
-            }
-
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
-
-            const constraints = {
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 3840 },
-                    height: { ideal: 2160 },
-                    advanced: [
-                        { focusMode: 'continuous' },
-                        { exposureMode: 'continuous' }
-                    ]
-                }
-            };
-
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(stream => {
-                    currentStream = stream;
-                    video.srcObject = stream;
-                    video.play();
-                    checkAlignment();
-                    if (!isFullscreenSupported()) {
-                        console.log('Full-screen mode is not supported on this device');
-                        maximizeCameraView();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error accessing camera:', error);
-                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                        showErrorMessage('Camera access denied. Please grant permission and try again.');
-                    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                        showErrorMessage('No camera found. Please ensure your device has a camera and try again.');
-                    } else if (error.name === 'OverconstrainedError') {
-                        const fallbackConstraints = {
-                            video: {
-                                facingMode: 'environment',
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 }
-                            }
-                        };
-                        navigator.mediaDevices.getUserMedia(fallbackConstraints)
-                            .then(stream => {
-                                currentStream = stream;
-                                video.srcObject = stream;
-                                video.play();
-                                checkAlignment();
-                                if (!isFullscreenSupported()) {
-                                    console.log('Full-screen mode is not supported on this device');
-                                    maximizeCameraView();
-                                }
-                            })
-                            .catch(fallbackError => {
-                                console.error('Error accessing camera with fallback settings:', fallbackError);
-                                showErrorMessage('Unable to access the camera. Please check your device settings and try again.');
-                            });
-                    } else {
-                        showErrorMessage('An error occurred while accessing the camera. Please try again.');
-                    }
-                });
-        }
-
-        function maximizeCameraView() {
-            cameraContainer.style.position = 'fixed';
-            cameraContainer.style.top = '0';
-            cameraContainer.style.left = '0';
-            cameraContainer.style.width = '100%';
-            cameraContainer.style.height = '100%';
-            cameraContainer.style.zIndex = '9999';
-        }
-
-        function checkAlignment() {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-
-            function processFrame() {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                let src = cv.imread(canvas);
-                let dst = new cv.Mat();
-                let gray = new cv.Mat();
-                
-                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-                cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-                cv.Canny(gray, dst, 50, 150, 3, false);
-                
-                let lines = new cv.Mat();
-                cv.HoughLinesP(dst, lines, 1, Math.PI / 180, 50, 50, 10);
-
-                let isAligned = lines.rows >= 4;
-
-                const cornerGuides = document.querySelectorAll('.corner-guide');
-                cornerGuides.forEach(guide => {
-                    if (isAligned) {
-                        guide.classList.add('aligned');
-                    } else {
-                        guide.classList.remove('aligned');
-                    }
-                });
-
-                if (isAligned) {
-                    captureBtn.style.backgroundColor = '#00ff00';
-                } else {
-                    captureBtn.style.backgroundColor = '#ffffff';
-                }
-
-                src.delete(); dst.delete(); gray.delete(); lines.delete();
-                requestAnimationFrame(processFrame);
-            }
-
-            processFrame();
-        }
-
         function capturePhoto() {
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
@@ -510,20 +310,10 @@
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            let src = cv.imread(canvas);
-            let dst = new cv.Mat();
-            
-            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-            cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
-            
-            cv.imshow(canvas, dst);
             const imageData = canvas.toDataURL('image/png');
-
             preview.src = imageData;
             previewContainer.style.display = 'block';
             cameraContainer.style.display = 'none';
-
-            src.delete(); dst.delete();
         }
 
         captureBtn.addEventListener('click', capturePhoto);
@@ -557,26 +347,11 @@
             cameraContainer.style.display = 'none';
         }
 
-        document.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        window.addEventListener('orientationchange', function() {
-            console.log('Orientation changed');
+        startScanBtn.addEventListener('click', () => {
+            startContainer.style.display = 'none';
+            cameraContainer.style.display = 'block';
+            startCapture();
         });
-
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-        function handleFullscreenChange() {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
-                cameraContainer.classList.remove('fullscreen');
-            }
-        }
     </script>
 </body>
 </html>
