@@ -278,6 +278,30 @@
                 padding: 15px;
             }
         }
+        #permission-alert {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 9999;
+        }
+        #manual-permission-btn {
+            display: none;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -310,6 +334,10 @@
             <button id="yes-btn" class="preview-btn">✅ Yes, Save</button>
         </div>
     </div>
+    <div id="permission-alert">
+        <p id="permission-message"></p>
+        <button id="manual-permission-btn">Grant Camera Permission</button>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
     <script>
@@ -324,19 +352,27 @@
         const noBtn = document.getElementById('no-btn');
         const closeBtn = document.getElementById('close-btn');
         const uploadedDocuments = document.getElementById('uploaded-documents');
+        const permissionAlert = document.getElementById('permission-alert');
+        const permissionMessage = document.getElementById('permission-message');
+        const manualPermissionBtn = document.getElementById('manual-permission-btn');
 
         let currentStream;
         let capturedPhotos = [];
 
         function requestFullscreen(element) {
-            if (element.requestFullscreen) {
-                element.requestFullscreen().catch(err => console.log('Error attempting to enable full-screen mode:', err));
-            } else if (element.mozRequestFullScreen) {
-                element.mozRequestFullScreen();
-            } else if (element.webkitRequestFullscreen) {
-                element.webkitRequestFullscreen();
-            } else if (element.msRequestFullscreen) {
-                element.msRequestFullscreen();
+            try {
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.mozRequestFullScreen) {
+                    element.mozRequestFullScreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            } catch (err) {
+                console.log('Error attempting to enable full-screen mode:', err);
+                showPermissionAlert("Unable to enter full-screen mode. The app will continue in windowed mode.");
             }
         }
 
@@ -347,8 +383,23 @@
                    document.msFullscreenEnabled;
         }
 
+        function showPermissionAlert(message, showManualBtn = false) {
+            permissionMessage.textContent = message;
+            manualPermissionBtn.style.display = showManualBtn ? 'block' : 'none';
+            permissionAlert.style.display = 'block';
+        }
+
+        function hidePermissionAlert() {
+            permissionAlert.style.display = 'none';
+        }
+
         startScanBtn.addEventListener('click', () => {
-            requestFullscreen(document.documentElement);
+            if (isFullscreenSupported()) {
+                requestFullscreen(document.documentElement);
+            } else {
+                console.log('Full-screen mode is not supported on this device');
+                showPermissionAlert("Full-screen mode is not supported. The app will continue in windowed mode.");
+            }
             startContainer.style.display = 'none';
             cameraContainer.style.display = 'block';
             startCapture();
@@ -377,6 +428,7 @@
                     video.srcObject = stream;
                     video.play();
                     checkAlignment();
+                    hidePermissionAlert();
                     if (!isFullscreenSupported()) {
                         console.log('Full-screen mode is not supported on this device');
                         maximizeCameraView();
@@ -384,7 +436,13 @@
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
-                    alert('Unable to access the camera. Please make sure you have given the necessary permissions and try again.');
+                    if (error.name === 'NotAllowedError') {
+                        showPermissionAlert("Camera access denied. Please grant permission to use your camera.", true);
+                    } else if (error.name === 'NotFoundError') {
+                        showPermissionAlert("No camera found. Please make sure your device has a camera and try again.");
+                    } else {
+                        showPermissionAlert("An error occurred while accessing the camera. Please try again.");
+                    }
                 });
         }
 
@@ -483,6 +541,11 @@
             }
             cameraContainer.style.display = 'none';
             startContainer.style.display = 'block';
+        });
+
+        manualPermissionBtn.addEventListener('click', () => {
+            hidePermissionAlert();
+            startCapture();
         });
 
         function updateUploadedDocuments() {
