@@ -284,23 +284,35 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 30px;
+            border-radius: 15px;
             text-align: center;
             z-index: 9999;
+            max-width: 80%;
+            width: 300px;
+        }
+        #permission-message {
+            font-size: 18px;
+            margin-bottom: 20px;
+            line-height: 1.4;
         }
         #manual-permission-btn {
-            display: none;
             background-color: #007bff;
             color: #ffffff;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 25px;
             cursor: pointer;
-            margin-top: 10px;
+            transition: background-color 0.3s;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+        }
+        #manual-permission-btn:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
@@ -336,7 +348,7 @@
     </div>
     <div id="permission-alert">
         <p id="permission-message"></p>
-        <button id="manual-permission-btn">Grant Camera Permission</button>
+        <button id="manual-permission-btn">Retry Camera Access</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
@@ -383,8 +395,17 @@
                    document.msFullscreenEnabled;
         }
 
+        function showCameraAccessError() {
+            permissionMessage.innerHTML = `
+                <p>Unable to access the camera. Please make sure you have given the necessary permissions.</p>
+                <p>On most browsers, you can click the camera icon in the address bar to grant permission.</p>
+                <p>After granting permission, click the button below to retry.</p>
+            `;
+            showPermissionAlert(permissionMessage.innerHTML, true);
+        }
+
         function showPermissionAlert(message, showManualBtn = false) {
-            permissionMessage.textContent = message;
+            permissionMessage.innerHTML = message;
             manualPermissionBtn.style.display = showManualBtn ? 'block' : 'none';
             permissionAlert.style.display = 'block';
         }
@@ -436,8 +457,8 @@
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
-                    if (error.name === 'NotAllowedError') {
-                        showPermissionAlert("Camera access denied. Please grant permission to use your camera.", true);
+                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                        showCameraAccessError();
                     } else if (error.name === 'NotFoundError') {
                         showPermissionAlert("No camera found. Please make sure your device has a camera and try again.");
                     } else {
