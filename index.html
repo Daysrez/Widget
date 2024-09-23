@@ -311,6 +311,7 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.5.3/opencv.js"></script>
     <script>
         const startContainer = document.getElementById('start-container');
         const startScanBtn = document.getElementById('start-scan');
@@ -353,27 +354,6 @@
             startCapture();
         });
 
-        function checkAlignment() {
-            const isAligned = Math.random() > 0.5;
-
-            const cornerGuides = document.querySelectorAll('.corner-guide');
-            cornerGuides.forEach(guide => {
-                if (isAligned) {
-                    guide.classList.add('aligned');
-                } else {
-                    guide.classList.remove('aligned');
-                }
-            });
-
-            if (isAligned) {
-                captureBtn.style.backgroundColor = '#00ff00';
-            } else {
-                captureBtn.style.backgroundColor = '#ffffff';
-            }
-
-            requestAnimationFrame(checkAlignment);
-        }
-
         function startCapture() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
@@ -382,6 +362,12 @@
             const constraints = {
                 video: {
                     facingMode: 'environment',
+                    width: { ideal: 3840 },
+                    height: { ideal: 2160 },
+                    advanced: [
+                        { focusMode: "continuous" },
+                        { exposureMode: "continuous" }
+                    ]
                 }
             };
 
@@ -411,17 +397,70 @@
             cameraContainer.style.zIndex = '9999';
         }
 
+        function checkAlignment() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+
+            function processFrame() {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                let src = cv.imread(canvas);
+                let dst = new cv.Mat();
+                let gray = new cv.Mat();
+                
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+                cv.Canny(gray, dst, 50, 150, 3, false);
+                
+                let lines = new cv.Mat();
+                cv.HoughLinesP(dst, lines, 1, Math.PI / 180, 50, 50, 10);
+
+                let isAligned = lines.rows >= 4;
+
+                const cornerGuides = document.querySelectorAll('.corner-guide');
+                cornerGuides.forEach(guide => {
+                    if (isAligned) {
+                        guide.classList.add('aligned');
+                    } else {
+                        guide.classList.remove('aligned');
+                    }
+                });
+
+                if (isAligned) {
+                    captureBtn.style.backgroundColor = '#00ff00';
+                } else {
+                    captureBtn.style.backgroundColor = '#ffffff';
+                }
+
+                src.delete(); dst.delete(); gray.delete(); lines.delete();
+                requestAnimationFrame(processFrame);
+            }
+
+            processFrame();
+        }
+
         function capturePhoto() {
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            let src = cv.imread(canvas);
+            let dst = new cv.Mat();
+            
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.adaptiveThreshold(dst, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+            
+            cv.imshow(canvas, dst);
             const imageData = canvas.toDataURL('image/png');
 
             preview.src = imageData;
             previewContainer.style.display = 'block';
             cameraContainer.style.display = 'none';
+
+            src.delete(); dst.delete();
         }
 
         captureBtn.addEventListener('click', capturePhoto);
