@@ -329,7 +329,7 @@
 
         function requestFullscreen(element) {
             if (element.requestFullscreen) {
-                element.requestFullscreen();
+                element.requestFullscreen().catch(err => console.log('Error attempting to enable full-screen mode:', err));
             } else if (element.mozRequestFullScreen) {
                 element.mozRequestFullScreen();
             } else if (element.webkitRequestFullscreen) {
@@ -347,10 +347,10 @@
         }
 
         startScanBtn.addEventListener('click', () => {
+            requestFullscreen(document.documentElement);
             startContainer.style.display = 'none';
             cameraContainer.style.display = 'block';
             startCapture();
-            requestFullscreen(document.documentElement);
         });
 
         function checkAlignment() {
@@ -391,8 +391,10 @@
                     video.srcObject = stream;
                     video.play();
                     checkAlignment();
-                    maximizeCameraView();
-                    requestFullscreen(document.documentElement);
+                    if (!isFullscreenSupported()) {
+                        console.log('Full-screen mode is not supported on this device');
+                        maximizeCameraView();
+                    }
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
@@ -401,8 +403,12 @@
         }
 
         function maximizeCameraView() {
+            cameraContainer.style.position = 'fixed';
+            cameraContainer.style.top = '0';
+            cameraContainer.style.left = '0';
             cameraContainer.style.width = '100%';
             cameraContainer.style.height = '100%';
+            cameraContainer.style.zIndex = '9999';
         }
 
         function capturePhoto() {
