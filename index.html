@@ -216,16 +216,7 @@
             100% { transform: scale(1); }
         }
         .fullscreen-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 1001;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: #fff;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
+            display: none;
         }
         @media (orientation: portrait) {
             #start-scan {
@@ -297,7 +288,6 @@
         </div>
         <div id="camera-container">
             <video id="camera" autoplay playsinline></video>
-            <button id="fullscreen-btn" class="fullscreen-btn">⤢ Full Screen</button>
             <div class="overlay">
                 <div class="top-controls">
                     <button id="close-btn" class="btn">✕ Close</button>
@@ -333,7 +323,6 @@
         const noBtn = document.getElementById('no-btn');
         const closeBtn = document.getElementById('close-btn');
         const uploadedDocuments = document.getElementById('uploaded-documents');
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
 
         let currentStream;
         let capturedPhotos = [];
@@ -361,6 +350,7 @@
             startContainer.style.display = 'none';
             cameraContainer.style.display = 'block';
             startCapture();
+            requestFullscreen(document.documentElement);
         });
 
         function checkAlignment() {
@@ -402,6 +392,7 @@
                     video.play();
                     checkAlignment();
                     maximizeCameraView();
+                    requestFullscreen(document.documentElement);
                 })
                 .catch(error => {
                     console.error('Error accessing camera:', error);
@@ -457,17 +448,6 @@
             startContainer.style.display = 'block';
             cameraContainer.style.display = 'none';
         }
-
-        fullscreenBtn.addEventListener('click', () => {
-            if (isFullscreenSupported()) {
-                requestFullscreen(document.documentElement).catch(err => {
-                    console.warn('Failed to enter fullscreen mode:', err);
-                });
-            } else {
-                console.warn('Fullscreen not supported on this device');
-                alert('Fullscreen mode is not supported on your device.');
-            }
-        });
 
         document.addEventListener('touchstart', function(e) {
             if (e.touches.length > 1) {
